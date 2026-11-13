@@ -1,0 +1,25 @@
+# Local dependencies and generated output
+**/node_modules/
+**/dist/
+**/.next/
+**/.vinext/
+**/.wrangler/
+**/.sites-runtime/
+**/coverage/
+*.tsbuildinfo
+
+# Local secrets and machine state
+.env*
+**/.env*
+.dev.vars*
+**/.dev.vars*
+*.pem
+*.key
+.codex/
+.agents/
+.DS_Store
+Thumbs.db
+**/npm-debug.log*
+
+# Original generated photo; the optimized WebP is used in the app
+app/public/media/photobook.png
