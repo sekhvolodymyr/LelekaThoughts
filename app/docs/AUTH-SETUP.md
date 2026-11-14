@@ -22,14 +22,26 @@
 
 ## 3. Google
 
-У Google Cloud створіть OAuth-клієнт типу Web application:
+Перевірка 14 листопада 2026: публічний `/auth/v1/settings` повертає `external.google: false`, а `/authorize` — `400 provider is not enabled`. Це конфігураційна причина збою Google-входу та реєстрації. Зміна коду або повторний деплой самі по собі не увімкнуть провайдера.
+
+У [Google Auth Platform](https://console.cloud.google.com/auth/clients) створіть OAuth-клієнт типу Web application:
 
 - Authorized JavaScript origin: `https://lelekathoughts.vercel.app`
 - Authorized redirect URI: `https://glqsayxjvvnkmhejuqjz.supabase.co/auth/v1/callback`
 
 Налаштуйте назву застосунку LelekaThoughts, контактний email та потрібні параметри consent screen. Скопіюйте Client ID і Client Secret у [Supabase Auth Providers](https://supabase.com/dashboard/project/glqsayxjvvnkmhejuqjz/auth/providers), Google, та увімкніть провайдера. Секрет зберігається лише у Supabase.
 
-Перевірте Google-вхід і повторний вхід тим самим підтвердженим email іншим способом: це має бути один акаунт. Не прив’язуйте акаунти самостійно на основі непідтвердженого email.
+Для відкритого запуску перевірте статус публікації Google consent screen: у режимі Testing доступ мають лише додані тестові користувачі. У Supabase також обов’язково встановіть production Site URL і Redirect URLs з розділу 1: у логах ще трапляється типовий fallback `http://localhost:3000`.
+
+Після підключення перевірте:
+
+1. `/auth/v1/settings` з публічним `apikey` повертає `external.google: true`.
+2. «Продовжити з Google» з входу і реєстрації відкриває Google, після згоди повертає на `https://lelekathoughts.vercel.app/`.
+3. Новий користувач заповнює ім’я, @нік, дату народження й інтереси; повторний вхід відкриває той самий профіль.
+4. Повторний вхід тим самим підтвердженим email іншим способом веде в один акаунт. Не прив’язуйте акаунти самостійно на основі непідтвердженого email.
+5. Відмова або помилка входу показується у діалозі застосунку; параметри помилки прибираються з адреси. Успішний фрагмент сесії обробляє Supabase SDK.
+
+До ввімкнення провайдера застосунок перевіряє налаштування та показує зрозумілу помилку без переходу на JSON-сторінку Supabase. Налаштування перевіряються під час кожної спроби, тому після ввімкнення Google повторний деплой не потрібний.
 
 ## 4. Перший адміністратор
 

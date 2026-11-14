@@ -4,14 +4,20 @@ import {toast} from 'sonner';
 import {Button} from '@/components/ui/button';
 import {supabase,action,accountAction} from '@/lib/leleka/client';
 import {TOPICS} from '@/lib/leleka/types';
+import {assertGoogleEnabled,readAuthCallbackError,AUTH_CALLBACK_ERROR} from '@/lib/leleka/auth-flow';
 import {useApp} from './provider';
 import {Modal,FormField} from './ui';
 
 export function AuthDialog(){
- const {authOpen,setAuthOpen,user,me,loading,refresh,t,language}=useApp();const [mode,setMode]=useState('login'),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[code,setCode]=useState(''),[sent,setSent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const {authOpen,setAuthOpen,user,me,ready,loading,refresh,t,language}=useApp();const [mode,setMode]=useState('login'),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[code,setCode]=useState(''),[sent,setSent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [username,setUsername]=useState(''),[name,setName]=useState(''),[birth,setBirth]=useState(''),[interests,setInterests]=useState<string[]>([]);
  const onboarding=!!user&&!me&&!loading;
  useEffect(()=>{if(user){setName(user.user_metadata?.display_name||user.user_metadata?.full_name||'');setUsername(user.user_metadata?.username||'');setBirth(user.user_metadata?.birth_date||'')}if(sessionStorage.getItem('leleka.recovery'))setMode('new-password')},[user]);
+ useEffect(()=>{
+  if(!ready)return;
+  const failure=readAuthCallbackError(location.href);
+  if(failure){history.replaceState(history.state,'',failure.cleanUrl);setMode('login');setSent(false);setError(failure.message);setAuthOpen(true)}
+ },[ready,setAuthOpen]);
  const choose=(v:string)=>{setMode(v);setSent(false);setError('')};
  const run=async(fn:()=>Promise<void>)=>{setBusy(true);setError('');try{await fn()}catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}};
  const submit=(e:React.FormEvent)=>{e.preventDefault();void run(async()=>{
@@ -27,10 +33,17 @@ export function AuthDialog(){
    const {error}=sent?await supabase.auth.verifyOtp({email,token:code,type:'email'}):await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin}});if(error)throw error;if(sent)setAuthOpen(false);else setSent(true);
   }else if(mode==='reset'){const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin});if(error)throw error;setSent(true);}
  });};
- const google=()=>void run(async()=>{const {error}=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin}});if(error)throw error;});
+ const google=()=>void run(async()=>{
+  await assertGoogleEnabled();
+  const {data,error}=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:`${location.origin}/`,skipBrowserRedirect:true}});
+  if(error)throw error;
+  if(!data.url)throw new Error(AUTH_CALLBACK_ERROR);
+  location.assign(data.url);
+ });
  const title=onboarding?'Завершити реєстрацію':mode==='signup'?'Реєстрація':mode==='reset'?'Відновити пароль':mode==='otp'?'Код на email':mode==='new-password'?'Новий пароль':'Увійти';
  return <Modal open={authOpen||onboarding} onClose={()=>{if(!onboarding)setAuthOpen(false)}} title={t(title)} description={onboarding?t('Мінімальний вік — 16 років'):'LelekaThoughts'}>
   {!onboarding&&mode!=='new-password'&&<><Button variant="outline" onClick={google} disabled={busy}>G&nbsp; {t('Продовжити з Google')}</Button><div className="tabs compact">{['login','signup','otp'].map((m,i)=><button type="button" key={m} className={mode===m?'selected':''} onClick={()=>choose(m)}>{t(['Увійти','Реєстрація','Код на email'][i])}</button>)}</div></>}
+  {error&&<p role="alert" className="error-text">{t(error)}</p>}
   <form onSubmit={submit} className="form-stack">
    {!onboarding&&mode!=='new-password'&&<FormField label={mode==='login'?t('Email або @нік'):'Email'}><input required type={mode==='login'?'text':'email'} autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)}/></FormField>}
    {(mode==='login'||mode==='signup'||mode==='new-password')&&!onboarding&&<FormField label={t('Пароль')}><input required type="password" minLength={mode==='login'?1:8} autoComplete={mode==='login'?'current-password':'new-password'} value={password} onChange={e=>setPassword(e.target.value)}/></FormField>}
@@ -42,7 +55,6 @@ export function AuthDialog(){
    </>}
    {mode==='otp'&&sent&&<FormField label={language==='uk'?'Код із листа':'Code from email'}><input required inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e=>setCode(e.target.value)} minLength={6} maxLength={10}/></FormField>}
    {sent&&<p role="status" className="success-text">{t(mode==='signup'?'Підтвердіть email за посиланням у листі':'Перевірте пошту')}</p>}
-   {error&&<p role="alert" className="error-text">{error}</p>}
    <Button type="submit" disabled={busy||(sent&&mode!=='otp')}>{busy?t('Завантаження…'):t(onboarding?'Завершити реєстрацію':mode==='otp'?(sent?'Підтвердити код':'Надіслати код'):mode==='signup'?'Реєстрація':mode==='reset'?'Відновити пароль':mode==='new-password'?'Змінити пароль':'Увійти')}</Button>
    {mode==='login'&&!onboarding&&<button type="button" className="text-link" onClick={()=>choose('reset')}>{t('Відновити пароль')}</button>}
   </form>
