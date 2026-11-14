@@ -5,15 +5,16 @@ import {toast} from 'sonner';
 import {action,supabase} from '@/lib/leleka/client';
 import type {Profile,Post,Story,Series,Thread,Follow,Notice,Conversation} from '@/lib/leleka/types';
 import {translate,type Language} from '@/lib/leleka/i18n';
+import {normalizeTheme,type ThemeId} from '@/lib/leleka/themes';
 type Snapshot={profiles:Profile[];posts:Post[];stories:Story[];series:Series[];threads:Thread[];follows:Follow[];saves:string[];notices:Notice[];conversations:Conversation[];blocks:string[];reads:{conversation_id:string;last_read_at:string}[]};
 const EMPTY:Snapshot={profiles:[],posts:[],stories:[],series:[],threads:[],follows:[],saves:[],notices:[],conversations:[],blocks:[],reads:[]};
-type Context=Snapshot&{user:User|null;me:Profile|null;ready:boolean;loading:boolean;error:string;language:Language;theme:string;admin:boolean;setLanguage:(l:Language)=>void;setTheme:(t:string)=>void;t:(s:string)=>string;refresh:()=>Promise<void>;mutate:(name:string,p?:Record<string,unknown>)=>Promise<any>;requireAuth:()=>boolean;authOpen:boolean;setAuthOpen:(v:boolean)=>void;loadMore:()=>void;hasMore:boolean};
+type Context=Snapshot&{user:User|null;me:Profile|null;ready:boolean;loading:boolean;error:string;language:Language;theme:ThemeId;admin:boolean;setLanguage:(l:Language)=>void;setTheme:(t:string)=>void;t:(s:string)=>string;refresh:()=>Promise<void>;mutate:(name:string,p?:Record<string,unknown>)=>Promise<any>;requireAuth:()=>boolean;authOpen:boolean;setAuthOpen:(v:boolean)=>void;loadMore:()=>void;hasMore:boolean};
 const Ctx=createContext<Context>(null!);
 export function Provider({children}:{children:React.ReactNode}){
- const [data,setData]=useState(EMPTY),[user,setUser]=useState<User|null>(null),[ready,setReady]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[language,setLang]=useState<Language>('uk'),[theme,setThemeState]=useState('light'),[authOpen,setAuthOpen]=useState(false),[admin,setAdmin]=useState(false),[limit,setLimit]=useState(24),[hasMore,setHasMore]=useState(false);
+ const [data,setData]=useState(EMPTY),[user,setUser]=useState<User|null>(null),[ready,setReady]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[language,setLang]=useState<Language>('uk'),[theme,setThemeState]=useState<ThemeId>('light'),[authOpen,setAuthOpen]=useState(false),[admin,setAdmin]=useState(false),[limit,setLimit]=useState(24),[hasMore,setHasMore]=useState(false);
  const t=useCallback((s:string)=>translate(language,s),[language]);
  const setLanguage=useCallback((l:Language)=>{setLang(l);localStorage.setItem('leleka.language',l);document.documentElement.lang=l},[]);
- const setTheme=useCallback((v:string)=>{setThemeState(v);localStorage.setItem('leleka.theme',v);document.documentElement.dataset.theme=v},[]);
+ const setTheme=useCallback((value:string)=>{const v=normalizeTheme(value);setThemeState(v);localStorage.setItem('leleka.theme',v);document.documentElement.dataset.theme=v},[]);
  useEffect(()=>{setLanguage((localStorage.getItem('leleka.language') as Language)||'uk');setTheme(localStorage.getItem('leleka.theme')||'light');const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{setUser(session?.user||null);setReady(true);if(event==='PASSWORD_RECOVERY'){setAuthOpen(true);sessionStorage.setItem('leleka.recovery','1')}});supabase.auth.getSession().then(({data:{session}})=>{setUser(session?.user||null);setReady(true)});if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});return()=>subscription.unsubscribe()},[setLanguage,setTheme]);
  const refresh=useCallback(async()=>{
   setError('');

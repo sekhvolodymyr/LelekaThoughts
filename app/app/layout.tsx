@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "@/components/leleka/styles.css";
+import "@/components/leleka/themes.css";
 
 export const metadata: Metadata = {
   title: "LelekaThoughts — ідеї, що продовжуються",

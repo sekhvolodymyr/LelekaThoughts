@@ -1,5 +1,7 @@
 export type Language='uk'|'en';
 const en:Record<string,string>={
+'Оформлення':'Appearance','Захід сонця':'Sunset','Лаванда':'Lavender','Океан':'Ocean','Ліс':'Forest',
+'Застосовується одразу та зберігається на цьому пристрої.':'Applies immediately and is saved on this device.',
 'Вхід через Google ще не налаштовано. Скористайтеся email або спробуйте пізніше.':'Google sign-in is not set up yet. Use email or try again later.',
 'Не вдалося підключитися до сервісу входу. Перевірте інтернет і спробуйте ще раз.':'Could not connect to the sign-in service. Check your connection and try again.',
 'Не вдалося завершити вхід. Спробуйте ще раз.':'Could not complete sign-in. Please try again.',
