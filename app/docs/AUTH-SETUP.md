@@ -6,8 +6,8 @@
 
 У [Supabase URL Configuration](https://supabase.com/dashboard/project/glqsayxjvvnkmhejuqjz/auth/url-configuration):
 
-- Site URL: `https://leleka-thoughts.volodymyr-sekh-work.chatgpt.site`
-- Redirect URLs: `https://leleka-thoughts.volodymyr-sekh-work.chatgpt.site/`, `http://127.0.0.1:5173/`, `http://localhost:5173/`.
+- Site URL: `https://lelekathoughts.vercel.app`
+- Redirect URLs: `https://lelekathoughts.vercel.app/`, `http://127.0.0.1:5173/`, `http://localhost:5173/`.
 - Для паролів залиште увімкненим підтвердження email.
 
 ## 2. Email і коди
@@ -24,7 +24,7 @@
 
 У Google Cloud створіть OAuth-клієнт типу Web application:
 
-- Authorized JavaScript origin: `https://leleka-thoughts.volodymyr-sekh-work.chatgpt.site`
+- Authorized JavaScript origin: `https://lelekathoughts.vercel.app`
 - Authorized redirect URI: `https://glqsayxjvvnkmhejuqjz.supabase.co/auth/v1/callback`
 
 Налаштуйте назву застосунку LelekaThoughts, контактний email та потрібні параметри consent screen. Скопіюйте Client ID і Client Secret у [Supabase Auth Providers](https://supabase.com/dashboard/project/glqsayxjvvnkmhejuqjz/auth/providers), Google, та увімкніть провайдера. Секрет зберігається лише у Supabase.

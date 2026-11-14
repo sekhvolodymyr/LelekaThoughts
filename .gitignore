@@ -5,6 +5,7 @@
 **/.vinext/
 **/.wrangler/
 **/.sites-runtime/
+**/.vercel/
 **/coverage/
 *.tsbuildinfo
 

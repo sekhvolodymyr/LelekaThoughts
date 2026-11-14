@@ -2,13 +2,15 @@
 
 ## Архітектура
 
-- React 19, TypeScript, Vinext/Vite, Sites (Worker hosting).
+- React 19, TypeScript; production — Next.js на Vercel, локальний dev — Vinext/Vite. Альтернативна збірка Sites збережена.
+- Production: `https://lelekathoughts.vercel.app`, Vercel project `lelekathoughts` у просторі `sekhvolodymyrs-projects` (Hobby).
 - Supabase: Postgres, Auth, Storage, Realtime, Edge Functions.
 - Supabase project: `glqsayxjvvnkmhejuqjz`, LelekaThoughts, Frankfurt.
 - Sites project: `appgprj_6af0e6eff16c8191a40541475e183823`.
 - У клієнті містяться лише відкриті publishable/anon keys. Service-role ключ доступний лише серверним функціям через середовище Supabase.
 - Прямі записи до таблиць з браузера заборонені. `app_action` виконує транзакції з перевіркою особи, віку, власника, блокувань і стану акаунта.
 - RLS обмежує читання чернеток, листування, дати народження, збережень і сповіщень.
+- Вхід за @ніком і видалення акаунта проходять через same-origin `/api/account`. Маршрут передає запит у Supabase з JWT користувача або відкритим anon JWT; сервісного ключа на Vercel немає. Це усуває залежність браузерних викликів від CORS-списку доменів Edge-функції.
 
 ## Реалізовані сценарії
 

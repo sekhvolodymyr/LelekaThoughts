@@ -26,6 +26,19 @@ npm run dev
 
 ## Статус і налаштування
 
+Production: [lelekathoughts.vercel.app](https://lelekathoughts.vercel.app).
+
+### Деплой на Vercel
+
+Коренева директорія застосунку для Vercel — `app`. Конфігурація `app/vercel.json` використовує нативну Next.js-збірку `npm run build:vercel`; звичайний `npm run build` зберігає збірку Vinext для Sites.
+
+```sh
+cd app
+npx vercel deploy --project lelekathoughts --scope sekhvolodymyrs-projects --prod
+```
+
+Виконуйте локальну Next.js-збірку після зупинки dev-сервера Vinext: обидва інструменти генерують типи в `.next`. Для Vercel збірка відбувається в окремому середовищі. Необхідні адреси OAuth/email описані в інструкції підключення нижче.
+
 Це поточний MVP, а не підтверджений завершений публічний запуск. Google OAuth, власний SMTP-відправник, адреси повернення та шаблони email потребують налаштувань власника. Перший адміністратор призначається явно. Частина наскрізних перевірок ще потребує завершення.
 
 - [Погоджений PRD](PRD.md)

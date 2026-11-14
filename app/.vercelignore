@@ -1,0 +1,11 @@
+.sites-runtime
+.wrangler
+.vinext
+.next
+dist
+node_modules
+design
+public/media/photobook.png
+*.tsbuildinfo
+.env*
+.dev.vars*

@@ -1,9 +1,9 @@
 import {createClient} from '@supabase/supabase-js';
 import type {Media} from './types';
+import {SUPABASE_URL,PUBLIC_KEY} from './config';
+export {SUPABASE_URL,PUBLIC_KEY} from './config';
 
 // This is a public, deliberately browser-safe key. Authorization is enforced in Postgres.
-export const SUPABASE_URL='https://glqsayxjvvnkmhejuqjz.supabase.co';
-export const PUBLIC_KEY='sb_publishable_Qj9arKK4QNhVttXhRMX1kA_qIp7U9Ed';
 const PUBLIC_ANON_JWT='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdscXNheXhqdnZua21oZWp1cWp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNjk4MDEsImV4cCI6MjEwOTc0NTgwMX0.A0HZDgs3VJQ316kxIE0RHX1EraVAMYnqhZ38A19EDcs';
 export const supabase=createClient(SUPABASE_URL,PUBLIC_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 export async function action(name:string,payload:Record<string,unknown>={}) {
@@ -11,7 +11,7 @@ export async function action(name:string,payload:Record<string,unknown>={}) {
 }
 export async function accountAction(payload:Record<string,unknown>){
  const {data:{session}}=await supabase.auth.getSession();
- const response=await fetch(`${SUPABASE_URL}/functions/v1/account`,{method:'POST',headers:{'Content-Type':'application/json',apikey:PUBLIC_KEY,Authorization:`Bearer ${session?.access_token||PUBLIC_ANON_JWT}`},body:JSON.stringify(payload)});
+ const response=await fetch('/api/account',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session?.access_token||PUBLIC_ANON_JWT}`},body:JSON.stringify(payload)});
  const data=await response.json() as {error?:string;session:{access_token:string;refresh_token:string};ok?:boolean}; if(!response.ok) throw new Error(data.error||'Не вдалося виконати дію'); return data;
 }
 export async function upload(file:File,userId:string):Promise<Media>{
