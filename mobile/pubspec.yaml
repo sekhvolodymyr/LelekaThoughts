@@ -1,0 +1,41 @@
+name: leleka_thoughts
+description: Native LelekaThoughts client for Android.
+publish_to: none
+version: 1.0.0+1
+environment:
+  sdk: '>=3.14.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  supabase_flutter: 2.18.3
+  shared_preferences: 2.5.6
+  image_picker: 1.2.4
+  video_player: 2.14.1
+  http: 1.6.0
+  url_launcher: 6.3.3
+  share_plus: 13.3.1
+  mime: 2.1.0
+  flutter_svg: 2.4.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: 0.14.4
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/stork.svg
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/Inter.ttf
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icon.png
+  adaptive_icon_background: '#faf9f6'
+  adaptive_icon_foreground: assets/icon.png

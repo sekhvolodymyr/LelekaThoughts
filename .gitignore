@@ -24,3 +24,5 @@ Thumbs.db
 
 # Original generated photo; the optimized WebP is used in the app
 app/public/media/photobook.png
+/.tooling/
+/artifacts/
