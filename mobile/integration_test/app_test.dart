@@ -18,6 +18,10 @@ void main() {
   testWidgets('Native UI and shared-backend creator journey', (tester) async {
     const password = String.fromEnvironment('QA_PASSWORD');
     const peerPassword = String.fromEnvironment('QA_PEER_PASSWORD');
+    const peerEmail = String.fromEnvironment(
+      'QA_PEER_EMAIL',
+      defaultValue: 'native.qa.20261114@example.invalid',
+    );
     expect(
       password,
       isNotEmpty,
@@ -89,10 +93,21 @@ void main() {
     String? storyId;
     try {
       await peer.auth.signInWithPassword(
-        email: 'native.qa.20261114@example.invalid',
+        email: peerEmail,
         password: peerPassword,
       );
       final peerId = peer.auth.currentUser!.id;
+      final existingChats = await app.db
+          .from('conversations')
+          .select('id')
+          .or('member_a.eq.$peerId,member_b.eq.$peerId');
+      expect(
+        existingChats,
+        isEmpty,
+        reason:
+            'Use a fresh QA peer or reset only this fixture conversation '
+            'before rerunning the pending-request scenario.',
+      );
       final peerProfile = await peer
           .from('profiles')
           .select()
