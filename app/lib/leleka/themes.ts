@@ -5,6 +5,7 @@ export const THEMES = [
   {id:'lavender', label:'Лаванда', preview:'linear-gradient(135deg,#d5d1fb,#f5d8eb)'},
   {id:'ocean', label:'Океан', preview:'linear-gradient(135deg,#173759,#18757b)'},
   {id:'forest', label:'Ліс', preview:'linear-gradient(135deg,#233d36,#526349)'},
+  {id:'vyshyvanka', label:'Вишиванка', preview:'url(/media/vyshyvanka.svg) center / 64px 32px repeat #fffaf0'},
 ] as const;
 
 export type ThemeId = typeof THEMES[number]['id'];

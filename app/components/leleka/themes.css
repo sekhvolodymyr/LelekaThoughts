@@ -51,6 +51,23 @@
   --feed-background:linear-gradient(160deg,#223b33,#2f4436);
 }
 body{background:var(--canvas-background);background-attachment:fixed}
+:root[data-theme=vyshyvanka] {
+  color-scheme:light;
+  --canvas:#f5efe3;--sidebar:#f3ecdf;--background:#fffaf2;--foreground:#302b29;
+  --card:#fffaf2;--card-foreground:#302b29;--popover:#fffaf2;--popover-foreground:#302b29;
+  --primary:#a52a35;--primary-foreground:#fff;--secondary:#f0e7da;--secondary-foreground:#302b29;
+  --muted:#f0e7da;--muted-foreground:#756355;--accent:#f4dedb;--accent-foreground:#8b2230;
+  --border:#decfbd;--input:#bba58e;--ring:#a52a35;--destructive:#a52a35;
+  --canvas-background:linear-gradient(#f5efe3eb,#f5efe3eb),url(/media/vyshyvanka.svg) repeat;
+  --sidebar-background:#f3ecdf;--feed-background:#fffaf2;
+}
+:root[data-theme=vyshyvanka] .sidebar::before,
+:root[data-theme=vyshyvanka] .page-title::before {
+  content:'';position:absolute;top:0;left:0;right:0;height:10px;
+  background:url(/media/vyshyvanka.svg) center / 32px 16px repeat-x;
+  pointer-events:none;
+}
+:root[data-theme=vyshyvanka] .page-title{position:relative}
 .sidebar{background:var(--sidebar-background)}
 .main-feed{background:var(--feed-background)}
 .current-theme{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted-foreground)}
