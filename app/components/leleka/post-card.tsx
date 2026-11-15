@@ -5,6 +5,7 @@ import {Button} from '@/components/ui/button';
 import {DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger,DropdownMenuGroup} from '@/components/ui/dropdown-menu';
 import {toast} from 'sonner';
 import {supabase,removeMedia} from '@/lib/leleka/client';
+import {postMedia} from '@/lib/leleka/media';
 import type {Post,Comment} from '@/lib/leleka/types';
 import {useApp} from './provider';
 import {Avatar,ago,Modal,FormField} from './ui';
@@ -13,10 +14,11 @@ export type Navigate=(path:string)=>void;
 export function PostCard({post,navigate,compose,openComments=false}:{post:Post;navigate:Navigate;compose:(o:ComposeOptions)=>void;openComments?:boolean}){
  const app=useApp();const {t,user,mutate,requireAuth,posts,saves,series,me,language}=app;const [comments,setComments]=useState(openComments),[report,setReport]=useState(false),[reason,setReason]=useState(''),[busy,setBusy]=useState(false);
  const [remoteQuote,setRemoteQuote]=useState<Post|null>(null);
+ const media=postMedia(post.media);
  const own=user?.id===post.author_id,liked=post.likes?.some(x=>x.user_id===user?.id),reposted=post.reposts?.some(x=>x.user_id===user?.id),saved=saves.includes(post.id),quote=posts.find(p=>p.id===post.quote_id)||remoteQuote;
  useEffect(()=>{if(post.quote_id&&!posts.some(p=>p.id===post.quote_id))supabase.from('posts').select('*,author:profiles!posts_author_id_fkey(*)').eq('id',post.quote_id).maybeSingle().then(({data})=>setRemoteQuote(data as any));},[post.quote_id,posts]);
  const fire=(name:string,p:Record<string,unknown>={})=>void mutate(name,{id:post.id,...p}).catch(()=>{});
- const remove=async()=>{if(!confirm(language==='uk'?'Видалити цей пост?':'Delete this post?'))return;try{await mutate('delete_post',{id:post.id});await removeMedia(post.media)}catch(e){toast.error(e instanceof Error?e.message:String(e))}};
+ const remove=async()=>{if(!confirm(language==='uk'?'Видалити цей пост?':'Delete this post?'))return;try{await mutate('delete_post',{id:post.id});await removeMedia(media)}catch(e){toast.error(e instanceof Error?e.message:String(e))}};
  return <article className="post" id={`post-${post.id}`}>
   <div className="post-avatar"><button aria-label={post.author?.display_name||t('Профіль')} onClick={()=>post.author_id&&navigate(`/profile/${post.author_id}`)}><Avatar profile={post.author}/></button></div>
   <div className="post-main">
@@ -30,7 +32,7 @@ export function PostCard({post,navigate,compose,openComments=false}:{post:Post;n
    <p className={post.deleted?'post-body muted':'post-body'}>{post.deleted?t('Пост видалено'):post.body}</p>
    {post.edited_at&&!post.deleted&&<small className="muted">{t('Змінено')}</small>}
    {post.thread&&<button className="thread-link" onClick={()=>navigate(`/thread/${post.thread_id}/${post.id}`)}><span className="thread-mark"/><span>{post.part&&post.part>1?`${t('Продовження ланцюжка')} · `:''}{post.thread.title} · {t('Частина')} {post.part}</span><ArrowUpRight size={14}/></button>}
-   {!post.deleted&&post.media?.length>0&&<div className={`post-media media-${post.media.length}`}>{post.media.map(m=><a key={m.path||m.src} href={m.src} target="_blank" rel="noreferrer"><img src={m.src} alt={post.body.slice(0,120)||t('Фото')} loading="lazy"/></a>)}</div>}
+   {!post.deleted&&media.length>0&&<div className={`post-media media-${media.length}`}>{media.map(m=><a key={m.path||m.src} href={m.src} target="_blank" rel="noreferrer"><img src={m.src} alt={post.body.slice(0,120)||t('Фото')} loading="lazy"/></a>)}</div>}
    {post.quote_id&&!post.deleted&&<button className="quote" onClick={()=>navigate(`/post/${post.quote_id}`)}><strong>{quote?.author?.display_name||'LelekaThoughts'}</strong><p>{!quote||quote.deleted?t('Пост видалено'):quote.body}</p></button>}
    {post.thread&&post.part!==1&&<button className="text-link subtle" onClick={()=>navigate(`/thread/${post.thread_id}`)}>{t('Читати від початку')}</button>}
    {series.some(s=>s.thread_id===post.thread_id)&&post.thread_id&&<button className="text-link subtle" onClick={()=>navigate(`/series/${series.find(s=>s.thread_id===post.thread_id)!.id}`)}>{t('Дивитися процес')} <ArrowUpRight size={13}/></button>}

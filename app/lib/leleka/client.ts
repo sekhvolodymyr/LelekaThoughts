@@ -1,6 +1,7 @@
 import {createClient} from '@supabase/supabase-js';
 import type {Media} from './types';
 import {SUPABASE_URL,PUBLIC_KEY} from './config';
+import {validMedia} from './media';
 export {SUPABASE_URL,PUBLIC_KEY} from './config';
 
 // This is a public, deliberately browser-safe key. Authorization is enforced in Postgres.
@@ -24,8 +25,16 @@ export async function upload(file:File,userId:string):Promise<Media>{
   const image=await createImageBitmap(file); const ratio=Math.min(1,1800/Math.max(image.width,image.height)); const canvas=document.createElement('canvas');canvas.width=Math.round(image.width*ratio);canvas.height=Math.round(image.height*ratio);canvas.getContext('2d')!.drawImage(image,0,0,canvas.width,canvas.height);image.close();blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Не вдалося обробити фото')),'image/webp',.85));
  }else if(!file.type.startsWith('image/'))throw new Error('Оберіть фото або відео');
  if(blob.size>50*1024*1024)throw new Error('Один файл має бути до 50 МБ — технічне обмеження сховища.');
- const ext=blob.type==='image/webp'?'webp':file.name.split('.').pop()?.replace(/[^a-z0-9]/gi,'')||'bin';const path=`${userId}/${crypto.randomUUID()}.${ext}`;
- const {error}=await supabase.storage.from('media').upload(path,blob,{contentType:blob.type,upsert:false});if(error)throw new Error(error.message);
- return {src:supabase.storage.from('media').getPublicUrl(path).data.publicUrl,path,type:blob.type,...(duration?{duration}:{})};
+ if(!userId)throw new Error('Увійдіть до акаунта');
+ const {data:{session}}=await supabase.auth.getSession();
+ if(!session)throw new Error('Увійдіть до акаунта');
+ const response=await fetch(`${SUPABASE_URL}/functions/v1/media`,{method:'POST',headers:{apikey:PUBLIC_KEY,Authorization:`Bearer ${session.access_token}`,'Content-Type':blob.type},body:blob});
+ const result:unknown=await response.json();
+ if(!result||typeof result!=='object')throw new Error('Некоректна відповідь медіасервісу');
+ const media=result as Record<string,unknown>;
+ if(!response.ok)throw new Error(String(media.error||'Не вдалося завантажити медіа'));
+ const completed={...media,...(duration?{duration}:{})};
+ if(!validMedia(completed))throw new Error('Некоректна відповідь медіасервісу');
+ return completed;
 }
 export async function removeMedia(media:Media[]){const paths=media.map(x=>x.path).filter(Boolean);if(paths.length){const {error}=await supabase.storage.from('media').remove(paths);if(error)throw new Error(error.message);}}

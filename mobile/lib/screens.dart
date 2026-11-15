@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'store.dart';
@@ -1042,7 +1043,9 @@ class _ChatPageState extends StoreState<ChatPage> {
   String? recipient, id;
   String error = '';
   bool busy = false, loading = true;
-  StreamSubscription<List<Map<String, dynamic>>>? subscription;
+  RealtimeChannel? subscription;
+  Timer? reloadTimer;
+  bool reloading = false, reloadAgain = false;
   String get draftKey => 'native.message:${app.uid}:$recipient';
   @override
   void initState() {
@@ -1068,25 +1071,40 @@ class _ChatPageState extends StoreState<ChatPage> {
     }
     input.text = app.prefs.getString(draftKey) ?? '';
     await load();
-    if (id != null) {
-      subscription = app.db
-          .from('messages')
-          .stream(primaryKey: ['id'])
-          .eq('conversation_id', id!)
-          .order('created_at')
-          .listen(
-            (data) {
-              if (mounted) {
-                setState(() => messages = data);
-                unawaited(markRead());
-                bottom();
+    subscribe();
+  }
+
+  void subscribe() {
+    if (id == null || subscription != null) return;
+    subscription = app.db
+        .channel('native-chat:$id')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: id!,
+          ),
+          callback: (_) {
+            reloadTimer?.cancel();
+            reloadTimer = Timer(const Duration(milliseconds: 250), () async {
+              if (!mounted) return;
+              if (reloading) {
+                reloadAgain = true;
+                return;
               }
-            },
-            onError: (Object e) {
-              if (mounted) setState(() => error = app.message(e));
-            },
-          );
-    }
+              reloading = true;
+              do {
+                reloadAgain = false;
+                await load();
+              } while (reloadAgain && mounted);
+              reloading = false;
+            });
+          },
+        )
+        .subscribe();
   }
 
   Future<void> markRead() async {
@@ -1113,8 +1131,9 @@ class _ChatPageState extends StoreState<ChatPage> {
             .from('messages')
             .select()
             .eq('conversation_id', id!)
-            .order('created_at')
+            .order('created_at', ascending: false)
             .limit(300);
+        messages = messages.reversed.toList();
         selected = await app.db
             .from('conversations')
             .select()
@@ -1144,7 +1163,8 @@ class _ChatPageState extends StoreState<ChatPage> {
 
   @override
   void dispose() {
-    subscription?.cancel();
+    reloadTimer?.cancel();
+    if (subscription != null) unawaited(app.db.removeChannel(subscription!));
     input.dispose();
     scroll.dispose();
     super.dispose();
@@ -1345,28 +1365,7 @@ class _ChatPageState extends StoreState<ChatPage> {
                               input.clear();
                               await app.prefs.remove(draftKey);
                               await load();
-                              if (subscription == null) {
-                                subscription = app.db
-                                    .from('messages')
-                                    .stream(primaryKey: ['id'])
-                                    .eq('conversation_id', id!)
-                                    .order('created_at')
-                                    .listen(
-                                      (data) {
-                                        if (mounted) {
-                                          setState(() => messages = data);
-                                          bottom();
-                                        }
-                                      },
-                                      onError: (Object e) {
-                                        if (mounted) {
-                                          setState(
-                                            () => error = app.message(e),
-                                          );
-                                        }
-                                      },
-                                    );
-                              }
+                              subscribe();
                             } catch (e) {
                               if (mounted) {
                                 setState(() => error = app.message(e));

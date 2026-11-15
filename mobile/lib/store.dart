@@ -83,6 +83,8 @@ class AppStore extends ChangeNotifier {
   int limit = 24, _generation = 0;
   RealtimeChannel? _channel;
   Timer? _refreshTimer;
+  Future<void>? _refreshWork;
+  bool _refreshAgain = false, _needsFullRefresh = false;
   Future<void> initialize() async {
     prefs = await SharedPreferences.getInstance();
     palette = LelekaPalette.fromId(prefs.getString('theme'));
@@ -109,7 +111,7 @@ class AppStore extends ChangeNotifier {
       _refreshTimer?.cancel();
       _refreshTimer = Timer(
         const Duration(milliseconds: 400),
-        () => unawaited(refresh()),
+        () => unawaited(refresh(postsOnly: payload.table == 'posts')),
       );
     }
 
@@ -135,10 +137,51 @@ class AppStore extends ChangeNotifier {
     _channel = channel.subscribe();
   }
 
-  Future<void> refresh({bool more = false}) async {
+  Future<void> refresh({bool more = false, bool postsOnly = false}) {
     if (more) limit += 24;
-    final generation = ++_generation;
+    _refreshAgain = true;
+    _needsFullRefresh = _needsFullRefresh || !postsOnly;
+    return _refreshWork ??= _drainRefresh();
+  }
+
+  Future<void> _drainRefresh() async {
     try {
+      while (_refreshAgain) {
+        _refreshAgain = false;
+        final full = _needsFullRefresh;
+        _needsFullRefresh = false;
+        await _refreshOnce(postsOnly: !full);
+      }
+    } finally {
+      _refreshWork = null;
+    }
+  }
+
+  Future<void> _refreshOnce({required bool postsOnly}) async {
+    final generation = ++_generation;
+    final requestedUid = uid;
+    try {
+      if (postsOnly) {
+        final result = await Future.wait([
+          db
+              .from('posts')
+              .select(postSelect)
+              .order('created_at', ascending: false)
+              .limit(limit),
+          db
+              .from('threads')
+              .select()
+              .order('created_at', ascending: false)
+              .limit(100),
+        ]).timeout(const Duration(seconds: 25));
+        if (generation != _generation || requestedUid != uid) return;
+        posts = rows(result[0]);
+        threads = rows(result[1]);
+        hasMore = posts.length == limit;
+        error = '';
+        online = true;
+        return;
+      }
       final result = await Future.wait<dynamic>([
         db.from('profiles').select().order('created_at').limit(200),
         db
@@ -180,7 +223,7 @@ class AppStore extends ChangeNotifier {
         else
           Future.value([]),
       ]).timeout(const Duration(seconds: 25));
-      if (generation != _generation) return;
+      if (generation != _generation || requestedUid != uid) return;
       profiles = rows(result[0]);
       posts = rows(result[1]);
       stories = rows(result[2]);
@@ -306,20 +349,21 @@ class AppStore extends ChangeNotifier {
         (duration == null || duration <= 0 || duration > 30)) {
       throw Exception(t('Відео має тривати до 30 секунд'));
     }
-    final ext = file.name
-        .split('.')
-        .last
-        .replaceAll(RegExp('[^a-zA-Z0-9]'), '');
-    final path = '$uid/${DateTime.now().microsecondsSinceEpoch}.$ext';
-    await db.storage
-        .from('media')
-        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: type));
-    return {
-      'src': db.storage.from('media').getPublicUrl(path),
-      'path': path,
-      'type': type,
-      'duration': ?duration,
-    };
+    final response = await http
+        .post(
+          Uri.parse('$apiUrl/functions/v1/media'),
+          headers: {
+            'apikey': publicKey,
+            'Authorization': 'Bearer ${db.auth.currentSession?.accessToken}',
+            'Content-Type': type,
+          },
+          body: bytes,
+        )
+        .timeout(const Duration(seconds: 90));
+    final media = row(jsonDecode(response.body));
+    if (response.statusCode != 200)
+      throw Exception(media['error'] ?? 'Upload failed');
+    return {...media, 'duration': ?duration};
   }
 
   Future<void> removeMedia(List<LelekaRecord> media) async {

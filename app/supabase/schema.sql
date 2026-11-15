@@ -3,6 +3,31 @@ create schema if not exists app_private;
 revoke all on schema app_private from public;
 grant usage on schema app_private to anon, authenticated, service_role;
 
+-- Apply after schema.sql and maintenance.sql. No paid services or client privileges added.
+create or replace function app_private.valid_media(m jsonb, allow_video boolean default false)
+returns boolean language plpgsql immutable set search_path='' as $$
+begin
+ if jsonb_typeof(m) is distinct from 'object' then return false; end if;
+ if jsonb_typeof(m->'path') is distinct from 'string' or jsonb_typeof(m->'src') is distinct from 'string' or jsonb_typeof(m->'type') is distinct from 'string' then return false; end if;
+ if not ((m->>'src' ~ '^https://[^[:space:]]+$' or m->>'src' ~ '^/media/[a-zA-Z0-9._/-]+$') is true) then return false; end if;
+ if m->>'type' in ('image/jpeg','image/png','image/webp','image/gif') then return true; end if;
+ if allow_video and m->>'type' in ('video/mp4','video/webm','video/quicktime') then
+  if jsonb_typeof(m->'duration') is distinct from 'number' then return false; end if;
+  return ((m->>'duration')::numeric>0 and (m->>'duration')::numeric<=30) is true;
+ end if;
+ return false;
+end $$;
+create or replace function app_private.valid_post_media(m jsonb)
+returns boolean language plpgsql immutable set search_path='' as $$
+begin
+ if jsonb_typeof(m) is distinct from 'array' then return false; end if;
+ if jsonb_array_length(m)>4 then return false; end if;
+ return not exists(select 1 from jsonb_array_elements(m) x where not app_private.valid_media(x,false));
+end $$;
+revoke all on function app_private.valid_media(jsonb,boolean),app_private.valid_post_media(jsonb) from public;
+grant execute on function app_private.valid_media(jsonb,boolean),app_private.valid_post_media(jsonb) to anon,authenticated,service_role;
+
+
 create table public.profiles (
  id uuid primary key, username text not null unique check (username ~ '^[a-z0-9_\.]{3,30}$'),
  display_name text not null check (length(display_name) between 1 and 60), bio text not null default '' check(length(bio)<=240),
@@ -19,8 +44,8 @@ alter table app_private.config enable row level security;
 create table public.threads (id uuid primary key default gen_random_uuid(), author_id uuid references public.profiles on delete set null, title text not null check(length(title) between 1 and 100), topics text[] not null default '{}', created_at timestamptz not null default now(), check(cardinality(topics)<=3));
 create table public.posts (id uuid primary key default gen_random_uuid(), author_id uuid references public.profiles on delete set null, body text not null default '' check(length(body)<=1000), media jsonb not null default '[]' check(jsonb_typeof(media)='array' and jsonb_array_length(media)<=4), topics text[] not null default '{}', thread_id uuid references public.threads, part integer, quote_id uuid references public.posts on delete set null, deleted boolean not null default false, hidden boolean not null default false, created_at timestamptz not null default now(), edited_at timestamptz, unique(thread_id,part), check(cardinality(topics)<=3));
 create table public.series (id uuid primary key default gen_random_uuid(), author_id uuid not null references public.profiles on delete cascade, title text not null check(length(title) between 1 and 100), thread_id uuid references public.threads on delete set null, created_at timestamptz not null default now());
-create table public.stories (id uuid primary key default gen_random_uuid(), author_id uuid not null references public.profiles on delete cascade, media jsonb not null, caption text not null default '' check(length(caption)<=300), series_id uuid references public.series on delete set null, post_id uuid references public.posts on delete set null, views bigint not null default 0, account_views bigint not null default 0, anonymous_views bigint not null default 0, hidden boolean not null default false, created_at timestamptz not null default now(), expires_at timestamptz not null default now()+interval '24 hours');
-create table public.story_views (id bigint generated always as identity primary key, story_id uuid not null references public.stories on delete cascade, viewer_id uuid references public.profiles on delete set null, created_at timestamptz not null default now(), unique(story_id,viewer_id));
+create table public.stories (id uuid primary key default gen_random_uuid(), author_id uuid not null references public.profiles on delete cascade, media jsonb not null, caption text not null default '' check(length(caption)<=300), series_id uuid references public.series on delete set null, post_id uuid references public.posts on delete set null, views bigint not null default 0, account_views bigint not null default 0, anonymous_views bigint not null default 0, anonymous_window_start timestamptz, anonymous_window_count integer not null default 0, hidden boolean not null default false, created_at timestamptz not null default now(), expires_at timestamptz not null default now()+interval '24 hours');
+create table public.story_views (id bigint generated always as identity primary key, story_id uuid not null references public.stories on delete cascade, viewer_id uuid not null references public.profiles on delete cascade, created_at timestamptz not null default now(), unique(story_id,viewer_id));
 create table public.story_likes (story_id uuid references public.stories on delete cascade, user_id uuid references public.profiles on delete cascade, primary key(story_id,user_id));
 create table public.likes (post_id uuid references public.posts on delete cascade, user_id uuid references public.profiles on delete cascade, created_at timestamptz not null default now(), primary key(post_id,user_id));
 create table public.comments (id uuid primary key default gen_random_uuid(), post_id uuid not null references public.posts on delete cascade, author_id uuid references public.profiles on delete set null, parent_id uuid references public.comments, body text not null check(length(body) between 1 and 1000), deleted boolean not null default false, created_at timestamptz not null default now());
@@ -100,6 +125,13 @@ begin
  if action='view_story' then
   select * into st from public.stories where id=(payload->>'id')::uuid and not hidden and (expires_at>now() or series_id is not null) and app_private.visible_author(author_id);
   if not found then raise exception 'Story unavailable'; end if;
+  if actor is null then
+   update public.stories set views=views+1,anonymous_views=anonymous_views+1,
+    anonymous_window_count=case when anonymous_window_start is null or anonymous_window_start<now()-interval '1 minute' then 1 else anonymous_window_count+1 end,
+    anonymous_window_start=case when anonymous_window_start is null or anonymous_window_start<now()-interval '1 minute' then now() else anonymous_window_start end
+    where id=st.id and (anonymous_window_start is null or anonymous_window_start<now()-interval '1 minute' or anonymous_window_count<60);
+   return jsonb_build_object('id',st.id,'counted',found);
+  end if;
   insert into public.story_views(story_id,viewer_id) values(st.id,actor) on conflict(story_id,viewer_id) do nothing;
   if found then update public.stories set views=views+1,account_views=account_views+case when actor is not null then 1 else 0 end,anonymous_views=anonymous_views+case when actor is null then 1 else 0 end where id=st.id; end if;
   return jsonb_build_object('id',st.id);
@@ -124,7 +156,7 @@ begin
   txt:=trim(coalesce(payload->>'body','')); media_value:=coalesce(payload->'media','[]'); topics_value:=array(select jsonb_array_elements_text(coalesce(payload->'topics','[]')));
   if txt='' and jsonb_array_length(media_value)=0 then raise exception 'Write something or add a photo'; end if;
   if jsonb_typeof(media_value)<>'array' or jsonb_array_length(media_value)>4 or length(txt)>1000 or cardinality(topics_value)>3 then raise exception 'Post limits exceeded'; end if;
-  if exists(select 1 from jsonb_array_elements(media_value) m where m->>'type' not like 'image/%' or m->>'path' not like actor::text||'/%') then raise exception 'Invalid media ownership'; end if;
+  if not app_private.valid_post_media(media_value) or exists(select 1 from jsonb_array_elements(media_value) m where not ((m->>'path' like actor::text||'/%') is true)) then raise exception 'Invalid media ownership'; end if;
   if action='edit_post' then
    update public.posts set body=txt,media=media_value,edited_at=now() where id=target and author_id=actor and not deleted returning id into pid;
    if pid is null then raise exception 'Post unavailable'; end if;
@@ -192,7 +224,7 @@ begin
  elsif action='story' then
   if not app_private.uploads_open() then raise exception 'Media uploads are temporarily paused'; end if;
   media_value:=payload->'media';
-  if media_value->>'path' not like actor::text||'/%' or (media_value->>'type' not like 'image/%' and media_value->>'type' not like 'video/%') then raise exception 'Invalid media'; end if;
+  if not app_private.valid_media(media_value,true) or not ((media_value->>'path' like actor::text||'/%') is true) then raise exception 'Invalid media'; end if;
   if media_value->>'type' like 'video/%' and (coalesce((media_value->>'duration')::numeric,999)>30 or coalesce((media_value->>'duration')::numeric,0)<=0) then raise exception 'Video must be at most 30 seconds'; end if;
   sid:=nullif(payload->>'series_id','')::uuid;
   tid:=nullif(payload->>'thread_id','')::uuid;
