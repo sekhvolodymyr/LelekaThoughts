@@ -83,6 +83,7 @@ class AppStore extends ChangeNotifier {
   int limit = 24, _generation = 0;
   RealtimeChannel? _channel;
   Timer? _refreshTimer;
+  bool _eventNeedsFullRefresh = false;
   Future<void>? _refreshWork;
   bool _refreshAgain = false, _needsFullRefresh = false;
   Future<void> initialize() async {
@@ -108,11 +109,14 @@ class AppStore extends ChangeNotifier {
     if (_channel != null) unawaited(db.removeChannel(_channel!));
     final channel = db.channel('native:${uid ?? 'public'}');
     void changed(PostgresChangePayload payload) {
+      _eventNeedsFullRefresh =
+          _eventNeedsFullRefresh || payload.table != 'posts';
       _refreshTimer?.cancel();
-      _refreshTimer = Timer(
-        const Duration(milliseconds: 400),
-        () => unawaited(refresh(postsOnly: payload.table == 'posts')),
-      );
+      _refreshTimer = Timer(const Duration(milliseconds: 400), () {
+        final full = _eventNeedsFullRefresh;
+        _eventNeedsFullRefresh = false;
+        unawaited(refresh(postsOnly: !full));
+      });
     }
 
     channel.onPostgresChanges(
