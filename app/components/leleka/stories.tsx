@@ -4,6 +4,7 @@ import {Plus,ChevronLeft,ChevronRight,Heart,Volume2,VolumeX,Pause,Play,Eye,Bookm
 import {Button} from '@/components/ui/button';
 import {toast} from 'sonner';
 import {supabase,action,removeMedia} from '@/lib/leleka/client';
+import {useMediaSource} from './private-media';
 import {validMedia} from '@/lib/leleka/media';
 import type {Story,Series} from '@/lib/leleka/types';
 import {useApp} from './provider';
@@ -17,6 +18,7 @@ export function StoryViewer({items,...props}:{items:Story[];onClose:()=>void;nav
 function SafeStoryViewer({items,onClose,navigate}:{items:Story[];onClose:()=>void;navigate:Navigate}){
  const app=useApp();const {t,user,profiles,series,threads,posts,mutate,language,requireAuth}=app;const [index,setIndex]=useState(0),[progress,setProgress]=useState(0),[paused,setPaused]=useState(false),[muted,setMuted]=useState(true),[liked,setLiked]=useState(false),[viewers,setViewers]=useState<string[]>([]),[showViews,setShowViews]=useState(false),[saving,setSaving]=useState(false),[title,setTitle]=useState(''),[threadId,setThreadId]=useState(''),[error,setError]=useState('');
  const video=useRef<HTMLVideoElement>(null),seen=useRef(new Set<string>());const story=items[index],person=profiles.find(p=>p.id===story?.author_id),collection=series.find(s=>s.id===story?.series_id),own=user?.id===story?.author_id;const advance=()=>index<items.length-1?setIndex(i=>i+1):onClose();
+ const mediaSource=useMediaSource(story?.media);
  useEffect(()=>{if(!story)return;setProgress(0);setError('');setShowViews(false);setSaving(false);if(!seen.current.has(story.id)){seen.current.add(story.id);action('view_story',{id:story.id}).catch(()=>{})}if(user){supabase.from('story_likes').select('user_id').eq('story_id',story.id).eq('user_id',user.id).maybeSingle().then(({data})=>setLiked(!!data));if(own&&new Date(story.expires_at).getTime()>Date.now())supabase.from('story_views').select('viewer_id').eq('story_id',story.id).then(({data})=>setViewers((data||[]).map(x=>x.viewer_id).filter(Boolean)));}else setLiked(false)},[story?.id,user?.id,own]);
  useEffect(()=>{if(!story||paused||story.media.type.startsWith('video/'))return;const timer=setInterval(()=>setProgress(v=>Math.min(100,v+1)),50);return()=>clearInterval(timer)},[story?.id,paused]);
  useEffect(()=>{if(progress>=100&&!paused)advance()},[progress,paused]);
@@ -28,7 +30,7 @@ function SafeStoryViewer({items,onClose,navigate}:{items:Story[];onClose:()=>voi
   <div className="story-progress">{items.map((s,i)=><span key={s.id}><i style={{width:`${i<index?100:i===index?progress:0}%`}}/></span>)}</div>
   <div className="story-viewer-head"><Avatar profile={person} size={32}/><strong>{person?.display_name}</strong><button aria-label={paused?'Play':'Pause'} onClick={()=>setPaused(v=>!v)}>{paused?<Play size={18}/>:<Pause size={18}/>}</button>{story.media.type.startsWith('video/')&&<button aria-label="Sound" onClick={()=>setMuted(v=>!v)}>{muted?<VolumeX size={18}/>:<Volume2 size={18}/>}</button>}</div>
   <div className="story-stage" onPointerDown={()=>setPaused(true)} onPointerUp={()=>setPaused(false)} onPointerLeave={()=>{}}>
-   {story.media.type.startsWith('video/')?<video key={story.id} ref={video} src={story.media.src} playsInline autoPlay muted={muted} onTimeUpdate={e=>{const v=e.currentTarget;if(v.duration)setProgress(v.currentTime/v.duration*100)}} onEnded={advance} onError={()=>{setError(language==='uk'?'Відео недоступне':'Video unavailable');setPaused(true)}}/>:<img key={story.id} src={story.media.src} alt={story.caption||t('Сторіс')} onError={()=>{setError(t('Помилка'));setPaused(true)}}/>}
+   {story.media.type.startsWith('video/')?<video key={story.id} ref={video} src={mediaSource||undefined} playsInline autoPlay muted={muted} onTimeUpdate={e=>{const v=e.currentTarget;if(v.duration)setProgress(v.currentTime/v.duration*100)}} onEnded={advance} onError={()=>{setError(language==='uk'?'Відео недоступне':'Video unavailable');setPaused(true)}}/>:<img key={story.id} src={mediaSource||undefined} alt={story.caption||t('Сторіс')} onError={()=>{setError(t('Помилка'));setPaused(true)}}/>}
    {index>0&&<button className="story-prev" aria-label={t('Повернутися')} onClick={()=>setIndex(i=>i-1)}><ChevronLeft/></button>}<button className="story-next" aria-label={t('Далі')} onClick={advance}><ChevronRight/></button>
    {story.caption&&<p className="story-caption">{story.caption}</p>}
   </div>

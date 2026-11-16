@@ -5,6 +5,8 @@ import {Button} from '@/components/ui/button';
 import {DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger,DropdownMenuGroup} from '@/components/ui/dropdown-menu';
 import {toast} from 'sonner';
 import {supabase,removeMedia} from '@/lib/leleka/client';
+import {PaidPostNotice} from './billing';
+import {PostImage} from './private-media';
 import {postMedia} from '@/lib/leleka/media';
 import type {Post,Comment} from '@/lib/leleka/types';
 import {useApp} from './provider';
@@ -32,18 +34,19 @@ export function PostCard({post,navigate,compose,openComments=false}:{post:Post;n
    <p className={post.deleted?'post-body muted':'post-body'}>{post.deleted?t('Пост видалено'):post.body}</p>
    {post.edited_at&&!post.deleted&&<small className="muted">{t('Змінено')}</small>}
    {post.thread&&<button className="thread-link" onClick={()=>navigate(`/thread/${post.thread_id}/${post.id}`)}><span className="thread-mark"/><span>{post.part&&post.part>1?`${t('Продовження ланцюжка')} · `:''}{post.thread.title} · {t('Частина')} {post.part}</span><ArrowUpRight size={14}/></button>}
-   {!post.deleted&&media.length>0&&<div className={`post-media media-${media.length}`}>{media.map(m=><a key={m.path||m.src} href={m.src} target="_blank" rel="noreferrer"><img src={m.src} alt={post.body.slice(0,120)||t('Фото')} loading="lazy"/></a>)}</div>}
+   {post.locked&&!post.deleted&&<PaidPostNotice post={post}/>}
+   {!post.deleted&&!post.locked&&media.length>0&&<div className={`post-media media-${media.length}`}>{media.map(m=><PostImage key={m.path||m.src} media={m} alt={post.body.slice(0,120)||t('Фото')} linked/>)}</div>}
    {post.quote_id&&!post.deleted&&<button className="quote" onClick={()=>navigate(`/post/${post.quote_id}`)}><strong>{quote?.author?.display_name||'LelekaThoughts'}</strong><p>{!quote||quote.deleted?t('Пост видалено'):quote.body}</p></button>}
    {post.thread&&post.part!==1&&<button className="text-link subtle" onClick={()=>navigate(`/thread/${post.thread_id}`)}>{t('Читати від початку')}</button>}
    {series.some(s=>s.thread_id===post.thread_id)&&post.thread_id&&<button className="text-link subtle" onClick={()=>navigate(`/series/${series.find(s=>s.thread_id===post.thread_id)!.id}`)}>{t('Дивитися процес')} <ArrowUpRight size={13}/></button>}
-   {!post.deleted&&<div className="post-actions">
+   {!post.deleted&&!post.locked&&<div className="post-actions">
     <button className={liked?'active':''} aria-label={t('Вподобати')} aria-pressed={liked} onClick={()=>fire('like')}><Heart size={20} fill={liked?'currentColor':'none'}/><span>{post.likes?.length||''}</span></button>
     <button aria-label={t('Коментарі')} aria-expanded={comments} onClick={()=>setComments(v=>!v)}><MessageCircle size={20}/><span>{post.comments?.length||''}</span></button>
     <DropdownMenu><DropdownMenuTrigger asChild><button className={reposted?'active':''} aria-label={t('Репост')}><Repeat2 size={20}/><span>{post.reposts?.length||''}</span></button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuGroup><DropdownMenuItem onClick={()=>fire('repost')}>{t('Репост')}</DropdownMenuItem><DropdownMenuItem onClick={()=>requireAuth()&&compose({quote:post})}>{t('Цитувати')}</DropdownMenuItem><DropdownMenuItem onClick={()=>navigate(`/messages/share-post/${post.id}`)}>{t('Поділитися')}</DropdownMenuItem></DropdownMenuGroup></DropdownMenuContent></DropdownMenu>
     <button className={saved?'save-action active':'save-action'} aria-label={t('Зберегти')} aria-pressed={saved} onClick={()=>fire('save')}><Bookmark size={20} fill={saved?'currentColor':'none'}/></button>
    </div>}
    {own&&!post.deleted&&<button className="text-link subtle" onClick={()=>compose({parent:post})}><Link2 size={13}/>{t('Продовжити')}</button>}
-   {comments&&<Comments post={post}/>}
+   {comments&&!post.locked&&<Comments post={post}/>}
   </div>
   <Modal open={report} onClose={()=>setReport(false)} title={t('Поскаржитися')}><form className="form-stack" onSubmit={async e=>{e.preventDefault();setBusy(true);try{await mutate('report',{id:post.id,target_type:'post',reason});setReport(false);toast.success(t('Скаргу надіслано'))}catch{}finally{setBusy(false)}}}><FormField label={language==='uk'?'Причина скарги':'Reason'}><textarea required value={reason} maxLength={1000} onChange={e=>setReason(e.target.value)}/></FormField><Button type="submit" disabled={busy}>{t('Надіслати')}</Button></form></Modal>
  </article>;

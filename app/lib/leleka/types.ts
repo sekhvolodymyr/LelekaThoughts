@@ -1,7 +1,8 @@
 export type Profile = {id:string;username:string;display_name:string;bio:string;avatar:string;website:string;interests:string[];pinned_post:string|null;is_demo:boolean;suspended:boolean;created_at:string};
-export type Media = {src:string;path:string;type:string;duration?:number};
+export type Media = {src:string;path:string;type:string;duration?:number;bucket?:'media'|'private-media'};
+export type ContentAccess = 'public'|'subscribers'|'purchase'|'either';
 export type Thread = {id:string;author_id:string;title:string;topics:string[];created_at:string};
-export type Post = {id:string;author_id:string|null;body:string;media:Media[];topics:string[];thread_id:string|null;part:number|null;quote_id:string|null;deleted:boolean;hidden:boolean;created_at:string;edited_at:string|null;author:Profile|null;thread:Thread|null;likes:{user_id:string}[];comments:{id:string}[];reposts:{user_id:string}[]};
+export type Post = {id:string;author_id:string|null;body:string;media:Media[];topics:string[];thread_id:string|null;part:number|null;quote_id:string|null;deleted:boolean;hidden:boolean;created_at:string;edited_at:string|null;author:Profile|null;thread:Thread|null;likes:{user_id:string}[];comments:{id:string}[];reposts:{user_id:string}[];access?:ContentAccess;preview_text?:string;price_cents?:number|null;paid_root_id?:string|null;locked?:boolean};
 export type Series = {id:string;author_id:string;title:string;thread_id:string|null;created_at:string};
 export type Story = {id:string;author_id:string;media:Media;caption:string;series_id:string|null;post_id:string|null;views:number;account_views:number;anonymous_views:number;created_at:string;expires_at:string};
 export type Comment = {id:string;post_id:string;author_id:string|null;parent_id:string|null;body:string;deleted:boolean;created_at:string;author:Profile|null};

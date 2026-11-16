@@ -26,6 +26,8 @@ npm run dev
 
 ## Статус і налаштування
 
+Приватні публікації, місячні підписки з автопродовженням і разові покупки підготовлені окремою міграцією. Порядок підключення, обмеження й перевірки: [MONETIZATION-SETUP.md](app/docs/MONETIZATION-SETUP.md). До погодження production-міграції та підключення merchant-акаунтів реальні платежі вимкнені.
+
 Production: [lelekathoughts.vercel.app](https://lelekathoughts.vercel.app).
 
 ### Деплой на Vercel

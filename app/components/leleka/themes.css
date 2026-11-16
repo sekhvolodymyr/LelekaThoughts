@@ -86,3 +86,11 @@ body{background:var(--canvas-background);background-attachment:fixed}
 .theme-preview-content i:last-child{width:65%}
 .theme-option-label{display:flex;justify-content:space-between;align-items:center;gap:4px;padding:8px 3px 2px;font-size:12px;color:var(--foreground);font-weight:500}
 .theme-option-label svg{color:var(--primary)}
+.paid-post-notice{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:22px;margin:14px 0;border:1px dashed var(--input);border-radius:12px;background:var(--canvas)}
+.paid-post-notice>svg{color:var(--primary)}.paid-post-notice p{font-size:13px;color:var(--muted-foreground);line-height:1.7}
+.billing-price{font-size:28px;letter-spacing:-.5px}.billing-notice{padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--accent);color:var(--accent-foreground);font-size:12px;line-height:1.7}
+.billing-consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.7;cursor:pointer}
+.billing-consent input[type=checkbox]{width:18px;height:18px;flex:0 0 18px;margin-top:3px;accent-color:var(--primary)}
+.billing-order{display:flex;flex-direction:column;gap:10px;padding:18px 0;border-bottom:1px solid var(--border)}.billing-order p{font-size:13px}.billing-order button{align-self:flex-start}
+.billing-provider{display:grid;grid-template-columns:1fr auto;gap:8px;padding:16px;border:1px solid var(--border);border-radius:10px;font-size:13px}.billing-provider span{color:var(--muted-foreground);font-size:12px}.billing-provider a{grid-column:1/-1;display:flex;gap:4px;align-items:center;color:var(--primary);font-size:12px}
+.creator-subscription{margin-bottom:18px}.private-media-loading{display:grid;place-items:center;min-height:120px;background:var(--muted);color:var(--muted-foreground);font-size:12px}.form-stack button>small{margin-left:auto;font-size:11px;white-space:normal}

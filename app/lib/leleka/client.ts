@@ -6,7 +6,7 @@ export {SUPABASE_URL,PUBLIC_KEY} from './config';
 
 // This is a public, deliberately browser-safe key. Authorization is enforced in Postgres.
 const PUBLIC_ANON_JWT='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdscXNheXhqdnZua21oZWp1cWp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNjk4MDEsImV4cCI6MjEwOTc0NTgwMX0.A0HZDgs3VJQ316kxIE0RHX1EraVAMYnqhZ38A19EDcs';
-export const supabase=createClient(SUPABASE_URL,PUBLIC_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+export const supabase=createClient(SUPABASE_URL,PUBLIC_KEY,{global:{headers:{'x-client-info':'leleka-web paid-content/1'}},auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 export async function action(name:string,payload:Record<string,unknown>={}) {
  const {data,error}=await supabase.rpc('app_action',{action:name,payload}); if(error) throw new Error(error.message); return data;
 }
@@ -15,7 +15,7 @@ export async function accountAction(payload:Record<string,unknown>){
  const response=await fetch('/api/account',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session?.access_token||PUBLIC_ANON_JWT}`},body:JSON.stringify(payload)});
  const data=await response.json() as {error?:string;session:{access_token:string;refresh_token:string};ok?:boolean}; if(!response.ok) throw new Error(data.error||'Не вдалося виконати дію'); return data;
 }
-export async function upload(file:File,userId:string):Promise<Media>{
+export async function upload(file:File,userId:string,privateMedia=false):Promise<Media>{
  const state=await action('upload_status'); if(!state.enabled)throw new Error('Завантаження медіа тимчасово призупинено. Текстові публікації доступні.');
  let duration:number|undefined; let blob:Blob=file;
  if(file.type.startsWith('video/')) {
@@ -28,13 +28,14 @@ export async function upload(file:File,userId:string):Promise<Media>{
  if(!userId)throw new Error('Увійдіть до акаунта');
  const {data:{session}}=await supabase.auth.getSession();
  if(!session)throw new Error('Увійдіть до акаунта');
- const response=await fetch(`${SUPABASE_URL}/functions/v1/media`,{method:'POST',headers:{apikey:PUBLIC_KEY,Authorization:`Bearer ${session.access_token}`,'Content-Type':blob.type},body:blob});
+ const response=await fetch(`${SUPABASE_URL}/functions/v1/${privateMedia?'private-media':'media'}`,{method:'POST',headers:{apikey:PUBLIC_KEY,Authorization:`Bearer ${session.access_token}`,'Content-Type':blob.type},body:blob});
  const result:unknown=await response.json();
  if(!result||typeof result!=='object')throw new Error('Некоректна відповідь медіасервісу');
  const media=result as Record<string,unknown>;
  if(!response.ok)throw new Error(String(media.error||'Не вдалося завантажити медіа'));
+ if(privateMedia&&media.bucket!=='private-media')throw new Error('Приватний медіасервіс не підтвердив захищене сховище');
  const completed={...media,...(duration?{duration}:{})};
  if(!validMedia(completed))throw new Error('Некоректна відповідь медіасервісу');
  return completed;
 }
-export async function removeMedia(media:Media[]){const paths=media.map(x=>x.path).filter(Boolean);if(paths.length){const {error}=await supabase.storage.from('media').remove(paths);if(error)throw new Error(error.message);}}
+export async function removeMedia(media:Media[]){for(const bucket of ['media','private-media'] as const){const paths=media.filter(x=>(x.bucket||'media')===bucket).map(x=>x.path).filter(Boolean);if(paths.length){const {error}=await supabase.storage.from(bucket).remove(paths);if(error)throw new Error(error.message);}}}

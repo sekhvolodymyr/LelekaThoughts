@@ -1,9 +1,11 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.119.0';
+import {backend,credentials,runtime} from '../_shared/billing/server.ts';
+import {cancelProvider,type Account,type Order} from '../_shared/billing/providers.ts';
 const url=Deno.env.get('SUPABASE_URL')!;
 const serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const anonKey=Deno.env.get('SUPABASE_ANON_KEY')!;
 const publishable='sb_publishable_Qj9arKK4QNhVttXhRMX1kA_qIp7U9Ed';
-const allowedOrigins=new Set(['https://leleka-thoughts.volodymyr-sekh-work.chatgpt.site','http://localhost:5173','http://127.0.0.1:5173','http://localhost:3000','http://127.0.0.1:3000']);
+const allowedOrigins=new Set(['https://lelekathoughts.vercel.app','https://leleka-thoughts.volodymyr-sekh-work.chatgpt.site','http://localhost:5173','http://127.0.0.1:5173','http://localhost:3000','http://127.0.0.1:3000']);
 Deno.serve(async request=>{
  const origin=request.headers.get('origin');
  const headers={'Content-Type':'application/json','Access-Control-Allow-Origin':origin&&allowedOrigins.has(origin)?origin:'https://leleka-thoughts.volodymyr-sekh-work.chatgpt.site','Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'};
@@ -33,10 +35,20 @@ Deno.serve(async request=>{
   if(!user.last_sign_in_at||Date.now()-new Date(user.last_sign_in_at).getTime()>5*60*1000)return json({error:'Повторно увійдіть до акаунта перед видаленням (протягом 5 хвилин).'},403);
   // Stop new writes while deletion is in progress; retrying deletion still works.
   const {error:suspendError}=await admin.from('profiles').update({suspended:true}).eq('id',user.id);if(suspendError)throw suspendError;
+  const subscriptions:Order[]=await backend('deletion_orders',{user_id:user.id});
+  for(const order of subscriptions){
+   await backend('cancel_request',{order_id:order.id,buyer_id:order.buyer_id});
+   const account:Account=await backend('account_get',{account_id:order.account_id});
+   await cancelProvider(order,account,credentials(account),runtime);
+   await backend('cancel_done',{order_id:order.id});
+  }
   // List at offset 0 after each removal so large folders are not skipped.
+  for(const bucket of ['media','private-media']){
+  if(bucket==='private-media'){const {data}=await admin.storage.getBucket(bucket);if(!data)continue;}
   for(let page=0;page<100;page++){
-   const {data:files,error}=await admin.storage.from('media').list(user.id,{limit:100});if(error)throw error;if(!files?.length)break;
-   const {error:removeError}=await admin.storage.from('media').remove(files.map(f=>`${user.id}/${f.name}`));if(removeError)throw removeError;
+   const {data:files,error}=await admin.storage.from(bucket).list(user.id,{limit:100});if(error)throw error;if(!files?.length)break;
+   const {error:removeError}=await admin.storage.from(bucket).remove(files.map(f=>`${user.id}/${f.name}`));if(removeError)throw removeError;
+  }
   }
   const {error:postError}=await admin.from('posts').update({body:'',media:[],deleted:true,edited_at:new Date().toISOString()}).eq('author_id',user.id);if(postError)throw postError;
   const {error:commentError}=await admin.from('comments').update({body:'',deleted:true}).eq('author_id',user.id);if(commentError)throw commentError;

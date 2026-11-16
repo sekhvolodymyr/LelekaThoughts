@@ -1,5 +1,7 @@
+import {billingEnglish} from './billing-i18n';
 export type Language='uk'|'en';
 const en:Record<string,string>={
+...billingEnglish,
 'Вишиванка':'Vyshyvanka',
 'Оформлення':'Appearance','Захід сонця':'Sunset','Лаванда':'Lavender','Океан':'Ocean','Ліс':'Forest',
 'Застосовується одразу та зберігається на цьому пристрої.':'Applies immediately and is saved on this device.',
