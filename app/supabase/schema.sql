@@ -270,7 +270,7 @@ begin
  elsif action='read_chat' then
   if not app_private.member(target) then raise exception 'Chat unavailable'; end if;
   insert into public.message_reads(user_id,conversation_id) values(actor,target) on conflict(user_id,conversation_id) do update set last_read_at=now();
-  update public.notifications n set read=true where recipient_id=actor and kind='message' and n.target=dispatch.target::text;
+  update public.notifications n set read=true where recipient_id=actor and kind='message' and n.target=((payload->>'id')::uuid)::text;
  elsif action='read_notifications' then
   update public.notifications set read=true where recipient_id=actor;
  elsif action='admin' then
