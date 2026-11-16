@@ -3,6 +3,7 @@ import "./globals.css";
 import "@/components/leleka/styles.css";
 import "@/components/leleka/themes.css";
 import "@/components/leleka/brand.css";
+import "@/components/leleka/blog.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://lelekathoughts.vercel.app"),

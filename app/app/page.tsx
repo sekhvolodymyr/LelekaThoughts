@@ -37,6 +37,6 @@ export default function Home(){return <>
     <details><summary>Чим ланцюжок відрізняється від серії сторіс?</summary><p>Ланцюжок — послідовність постів, яку продовжує автор. Серія — постійна іменована добірка сторіс. Їх можна зв’язати: читати розвиток ідеї в постах і дивитися процес у сторіс.</p></details>
    </section>
   </main>
-  <footer className="home-footer"><span>LelekaThoughts · Лелека</span><span>Українська соцмережа для креаторів</span><a href="/#/feed">До стрічки ↗</a></footer>
+  <footer className="home-footer"><span>LelekaThoughts · Лелека</span><a href="/blog">Блоги креаторів ↗</a><a href="/#/feed">До стрічки ↗</a></footer>
  </div></HomeEntry>
  </>}
