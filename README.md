@@ -52,6 +52,8 @@ npx vercel deploy --project lelekathoughts --scope sekhvolodymyrs-projects --pro
 
 ## Перевірки
 
+Android: [APK 1.1.0 Preview](https://github.com/sekhvolodymyr/LelekaThoughts/releases/tag/android-v1.1.0-preview.1), [нативний Flutter-клієнт і збірка](mobile/README.md). Вихідний код Android — у гілці `codex/flutter-android`.
+
 ```sh
 cd app
 npx tsc --noEmit

@@ -192,6 +192,20 @@ class LelekaPalette {
       Color(0xff50604d),
       [Color(0xff223b33), Color(0xff2f4436)],
     ),
+    LelekaPalette(
+      'vyshyvanka',
+      'Вишиванка',
+      Color(0xfff5efe3),
+      Color(0xfffffaf2),
+      Color(0xfff3ecdf),
+      Color(0xff302b29),
+      Color(0xff756355),
+      Color(0xffa52a35),
+      Colors.white,
+      Color(0xfff4dedb),
+      Color(0xffdecfbd),
+      [Color(0xfff5efe3), Color(0xfff5efe3)],
+    ),
   ];
   static LelekaPalette fromId(String? id) =>
       all.firstWhere((p) => p.id == id, orElse: () => all.first);

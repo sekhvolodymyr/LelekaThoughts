@@ -1046,10 +1046,12 @@ class _ChatPageState extends StoreState<ChatPage> {
   RealtimeChannel? subscription;
   Timer? reloadTimer;
   bool reloading = false, reloadAgain = false;
-  String get draftKey => 'native.message:${app.uid}:$recipient';
+  late final String? accountOwner;
+  String get draftKey => 'native.message:$accountOwner:$recipient';
   @override
   void initState() {
     super.initState();
+    accountOwner = app.uid;
     recipient = widget.recipient;
     id = widget.conversation;
     initialize();
@@ -1108,6 +1110,7 @@ class _ChatPageState extends StoreState<ChatPage> {
   }
 
   Future<void> markRead() async {
+    if (app.uid != accountOwner) return;
     if (id != null) {
       try {
         await app.db.rpc(
@@ -1125,6 +1128,7 @@ class _ChatPageState extends StoreState<ChatPage> {
   }
 
   Future<void> load() async {
+    if (app.uid != accountOwner) return;
     try {
       if (id != null) {
         messages = await app.db
@@ -1175,6 +1179,9 @@ class _ChatPageState extends StoreState<ChatPage> {
     final person = app.person(recipient),
         pending = selected?['status'] == 'pending',
         incoming = pending && selected?['initiator'] != app.uid;
+    if (app.uid == null || app.uid != accountOwner) {
+      return const NativePage(title: 'Повідомлення', body: AuthRequired());
+    }
     final disabled =
         selected?['status'] == 'declined' ||
         pending && (incoming || messages.isNotEmpty);

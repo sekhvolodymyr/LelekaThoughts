@@ -23,6 +23,28 @@ abstract class StoreState<T extends StatefulWidget> extends State<T> {
   }
 }
 
+/// Keep every drawer action reachable on short screens and with large text.
+class SidebarViewport extends StatelessWidget {
+  final Widget child;
+  const SidebarViewport({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (_, constraints) {
+      final minimum =
+          (820 * MediaQuery.textScalerOf(context).scale(1).clamp(1, 3))
+              .toDouble();
+      return SingleChildScrollView(
+        child: SizedBox(
+          height: constraints.maxHeight < minimum
+              ? minimum
+              : constraints.maxHeight,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 Future<void> go(BuildContext context, Widget page) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
 void notice(BuildContext context, String value) {
@@ -154,7 +176,16 @@ class NativePage extends StatelessWidget {
       ),
     ),
     child: Scaffold(
-      appBar: AppBar(title: Text(app.t(title)), actions: actions),
+      appBar: AppBar(
+        title: Text(app.t(title)),
+        actions: actions,
+        bottom: app.palette.id == 'vyshyvanka'
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(10),
+                child: EmbroideryBand(),
+              )
+            : null,
+      ),
       body: SafeArea(top: false, child: body),
     ),
   );
@@ -164,11 +195,24 @@ class StorkMark extends StatelessWidget {
   final double size;
   const StorkMark({super.key, this.size = 34});
   @override
-  Widget build(BuildContext context) => SvgPicture.asset(
-    'assets/stork.svg',
-    width: size,
-    height: size,
-    colorFilter: ColorFilter.mode(app.palette.text, BlendMode.srcIn),
+  Widget build(BuildContext context) =>
+      SvgPicture.asset('assets/stork.svg', width: size, height: size);
+}
+
+class EmbroideryBand extends StatelessWidget {
+  const EmbroideryBand({super.key});
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: SizedBox(
+      width: double.infinity,
+      height: 10,
+      child: Image.asset(
+        'assets/vyshyvanka.png',
+        repeat: ImageRepeat.repeatX,
+        scale: 4,
+        fit: BoxFit.none,
+      ),
+    ),
   );
 }
 
@@ -329,6 +373,9 @@ class NativeThemePicker extends StatelessWidget {
                                 colors: [p.sidebar, p.gradient.last],
                               ),
                             ),
+                            child: p.id == 'vyshyvanka'
+                                ? const Center(child: EmbroideryBand())
+                                : null,
                           ),
                         ),
                         const SizedBox(height: 7),

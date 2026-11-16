@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'palette.dart';
+import 'blog_strings.dart';
 
 typedef LelekaRecord = Map<String, dynamic>;
 const apiUrl = 'https://glqsayxjvvnkmhejuqjz.supabase.co';
@@ -81,6 +82,7 @@ class AppStore extends ChangeNotifier {
       online = true,
       recovering = false;
   int limit = 24, _generation = 0;
+  String? _sessionOwner;
   RealtimeChannel? _channel;
   Timer? _refreshTimer;
   bool _eventNeedsFullRefresh = false;
@@ -90,8 +92,29 @@ class AppStore extends ChangeNotifier {
     prefs = await SharedPreferences.getInstance();
     palette = LelekaPalette.fromId(prefs.getString('theme'));
     language = prefs.getString('language') ?? 'uk';
+    _sessionOwner = uid;
     db.auth.onAuthStateChange.listen(
       (event) {
+        if (_sessionOwner != uid) {
+          _sessionOwner = uid;
+          _generation++;
+          profiles = [];
+          posts = [];
+          stories = [];
+          series = [];
+          threads = [];
+          follows = [];
+          saves = [];
+          notices = [];
+          conversations = [];
+          blocks = [];
+          reads = [];
+          admin = false;
+          loading = true;
+          error = '';
+          limit = 24;
+          notifyListeners();
+        }
         if (event.event == AuthChangeEvent.passwordRecovery) recovering = true;
         _subscribe();
         unawaited(refresh());
@@ -246,16 +269,20 @@ class AppStore extends ChangeNotifier {
             .select()
             .eq('id', uid!)
             .maybeSingle();
+        if (generation != _generation || requestedUid != uid) return;
         if (own != null && !profiles.any((p) => p['id'] == uid)) {
           profiles.add(own);
         }
-        admin = await db.rpc('my_admin_status') == true;
+        final isAdmin = await db.rpc('my_admin_status') == true;
+        if (generation != _generation || requestedUid != uid) return;
+        admin = isAdmin;
       } else {
         admin = false;
       }
       error = '';
       online = true;
     } catch (e) {
+      if (generation != _generation || requestedUid != uid) return;
       error = message(e);
       if (e is SocketException || e is TimeoutException) online = false;
     } finally {
@@ -426,6 +453,7 @@ class AppStore extends ChangeNotifier {
 }
 
 const translations = <String, String>{
+  ...blogTranslations,
   "Оформлення": "Appearance",
   "Захід сонця": "Sunset",
   "Лаванда": "Lavender",

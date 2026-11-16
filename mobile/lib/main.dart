@@ -11,6 +11,7 @@ import 'auth.dart';
 import 'screens.dart';
 import 'posts.dart';
 import 'editor.dart';
+import 'blog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -137,223 +138,251 @@ class _HomeShellState extends StoreState<HomeShell>
 
   Widget sidebar(bool drawer) => SizedBox(
     width: 248,
-    child: Material(
-      color: app.palette.sidebar,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-              child: Row(
-                children: [
-                  const StorkMark(),
-                  const SizedBox(width: 8),
-                  Text(
-                    'LelekaThoughts',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: app.palette.text,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: FilledButton.icon(
-                onPressed: () {
-                  if (drawer) Navigator.pop(context);
-                  create();
-                },
-                icon: const Icon(Icons.add),
-                label: Text(app.t('Створити')),
-              ),
-            ),
-            const SizedBox(height: 18),
-            for (var i = 0; i < 5; i++)
+    child: SidebarViewport(
+      child: Material(
+        color: app.palette.sidebar,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 2,
-                ),
-                child: ListTile(
-                  dense: true,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  selected: selected == i,
-                  selectedTileColor: app.palette.accent,
-                  selectedColor: app.palette.primary,
-                  leading: Icon(icons[i], size: 21),
-                  title: Text(
-                    app.t(labels[i]),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  onTap: () {
-                    if (drawer) Navigator.pop(context);
-                    navigate(i);
-                  },
-                ),
-              ),
-            ListTile(
-              dense: true,
-              leading: const Icon(Icons.bookmark_border, size: 21),
-              title: Text(
-                app.t('Збережене'),
-                style: const TextStyle(fontSize: 14),
-              ),
-              onTap: () async {
-                if (drawer) Navigator.pop(context);
-                if (await ensureAuth(context) && context.mounted) {
-                  await go(context, const SavedPage());
-                }
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: line(),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
-              child: Text(
-                app.t('Мої ланцюжки'),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                children: [
-                  for (final th
-                      in app.threads
-                          .where((t) => t['author_id'] == app.uid)
-                          .take(7))
-                    ListTile(
-                      dense: true,
-                      leading: Icon(
-                        Icons.link,
-                        size: 16,
-                        color: app.palette.primary,
-                      ),
-                      title: Text(
-                        text(th['title']),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      onTap: () {
-                        if (drawer) Navigator.pop(context);
-                        go(context, ThreadPage(text(th['id'])));
-                      },
-                    ),
-                  if (!app.threads.any((t) => t['author_id'] == app.uid))
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Text(
-                        app.t(
-                          'Створіть перший ланцюжок через «Продовжити» під власним постом.',
-                        ),
-                        style: TextStyle(
-                          fontSize: 11,
-                          height: 1.7,
-                          color: app.palette.muted,
-                        ),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                child: Row(
+                  children: [
+                    const StorkMark(),
+                    const SizedBox(width: 8),
+                    Text(
+                      'LelekaThoughts',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: app.palette.text,
                       ),
                     ),
-                  if (app.uid != null)
-                    TextButton(
-                      onPressed: () {
-                        if (drawer) Navigator.pop(context);
-                        go(context, const MyThreadsPage());
-                      },
-                      child: Text(
-                        app.t('Мої чернетки'),
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            ListTile(
-              key: const ValueKey('theme-menu'),
-              dense: true,
-              leading: const Icon(Icons.palette_outlined, size: 20),
-              title: Text(app.t('Тема'), style: const TextStyle(fontSize: 12)),
-              trailing: Text(
-                app.t(app.palette.name),
-                style: TextStyle(fontSize: 10, color: app.palette.muted),
-              ),
-              onTap: () {
-                if (drawer) Navigator.pop(context);
-                pickTheme(context);
-              },
-            ),
-            ListTile(
-              dense: true,
-              leading: const Icon(Icons.language, size: 20),
-              title: Text(
-                app.language == 'uk' ? 'Українська' : 'English',
-                style: const TextStyle(fontSize: 12),
-              ),
-              onTap: () => app.setLanguage(app.language == 'uk' ? 'en' : 'uk'),
-            ),
-            if (app.admin)
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.shield_outlined),
-                title: Text(app.t('Адмінпанель')),
-                onTap: () {
-                  if (drawer) Navigator.pop(context);
-                  go(context, const AdminPage());
-                },
-              ),
-            line(),
-            if (app.me == null)
               Padding(
-                padding: const EdgeInsets.all(16),
-                child: OutlinedButton.icon(
-                  key: const ValueKey('sign-in'),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: FilledButton.icon(
                   onPressed: () {
                     if (drawer) Navigator.pop(context);
-                    showAuth(context);
+                    create();
                   },
-                  icon: const Icon(Icons.person_outline),
-                  label: Text(app.t('Увійти')),
+                  icon: const Icon(Icons.add),
+                  label: Text(app.t('Створити')),
                 ),
-              )
-            else
+              ),
+              const SizedBox(height: 18),
+              for (var i = 0; i < 5; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 2,
+                  ),
+                  child: ListTile(
+                    dense: true,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    selected: selected == i,
+                    selectedTileColor: app.palette.accent,
+                    selectedColor: app.palette.primary,
+                    leading: Icon(icons[i], size: 21),
+                    title: Text(
+                      app.t(labels[i]),
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    onTap: () {
+                      if (drawer) Navigator.pop(context);
+                      navigate(i);
+                    },
+                  ),
+                ),
               ListTile(
-                leading: PersonAvatar(app.me, size: 34),
+                dense: true,
+                leading: const Icon(Icons.bookmark_border, size: 21),
                 title: Text(
-                  text(app.me!['display_name']),
+                  app.t('Збережене'),
+                  style: const TextStyle(fontSize: 14),
+                ),
+                onTap: () async {
+                  if (drawer) Navigator.pop(context);
+                  if (await ensureAuth(context) && context.mounted) {
+                    await go(context, const SavedPage());
+                  }
+                },
+              ),
+              ListTile(
+                key: const ValueKey('my-blog-menu'),
+                dense: true,
+                leading: const Icon(Icons.menu_book_outlined, size: 21),
+                title: Text(
+                  app.t('Мій блог'),
+                  style: const TextStyle(fontSize: 14),
+                ),
+                trailing: IconButton(
+                  tooltip: app.t('Читати блоги'),
+                  icon: const Icon(Icons.public, size: 20),
+                  onPressed: () {
+                    if (drawer) Navigator.pop(context);
+                    go(context, const BlogPage(mine: false));
+                  },
+                ),
+                onTap: () async {
+                  if (drawer) Navigator.pop(context);
+                  if (await ensureAuth(context) && context.mounted)
+                    await go(context, const BlogPage());
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: line(),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+                child: Text(
+                  app.t('Мої ланцюжки'),
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                subtitle: Text(
-                  '@${app.me!['username']}',
-                  style: const TextStyle(fontSize: 10),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  children: [
+                    for (final th
+                        in app.threads
+                            .where((t) => t['author_id'] == app.uid)
+                            .take(7))
+                      ListTile(
+                        dense: true,
+                        leading: Icon(
+                          Icons.link,
+                          size: 16,
+                          color: app.palette.primary,
+                        ),
+                        title: Text(
+                          text(th['title']),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        onTap: () {
+                          if (drawer) Navigator.pop(context);
+                          go(context, ThreadPage(text(th['id'])));
+                        },
+                      ),
+                    if (!app.threads.any((t) => t['author_id'] == app.uid))
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Text(
+                          app.t(
+                            'Створіть перший ланцюжок через «Продовжити» під власним постом.',
+                          ),
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1.7,
+                            color: app.palette.muted,
+                          ),
+                        ),
+                      ),
+                    if (app.uid != null)
+                      TextButton(
+                        onPressed: () {
+                          if (drawer) Navigator.pop(context);
+                          go(context, const MyThreadsPage());
+                        },
+                        child: Text(
+                          app.t('Мої чернетки'),
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                  ],
                 ),
-                trailing: IconButton(
-                  tooltip: app.t('Налаштування'),
-                  onPressed: () {
-                    if (drawer) Navigator.pop(context);
-                    go(context, const SettingsPage());
-                  },
-                  icon: const Icon(Icons.settings_outlined, size: 20),
+              ),
+              ListTile(
+                key: const ValueKey('theme-menu'),
+                dense: true,
+                leading: const Icon(Icons.palette_outlined, size: 20),
+                title: Text(
+                  app.t('Тема'),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: Text(
+                  app.t(app.palette.name),
+                  style: TextStyle(fontSize: 10, color: app.palette.muted),
                 ),
                 onTap: () {
                   if (drawer) Navigator.pop(context);
-                  navigate(4);
+                  pickTheme(context);
                 },
               ),
-          ],
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.language, size: 20),
+                title: Text(
+                  app.language == 'uk' ? 'Українська' : 'English',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                onTap: () =>
+                    app.setLanguage(app.language == 'uk' ? 'en' : 'uk'),
+              ),
+              if (app.admin)
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.shield_outlined),
+                  title: Text(app.t('Адмінпанель')),
+                  onTap: () {
+                    if (drawer) Navigator.pop(context);
+                    go(context, const AdminPage());
+                  },
+                ),
+              line(),
+              if (app.me == null)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: OutlinedButton.icon(
+                    key: const ValueKey('sign-in'),
+                    onPressed: () {
+                      if (drawer) Navigator.pop(context);
+                      showAuth(context);
+                    },
+                    icon: const Icon(Icons.person_outline),
+                    label: Text(app.t('Увійти')),
+                  ),
+                )
+              else
+                ListTile(
+                  leading: PersonAvatar(app.me, size: 34),
+                  title: Text(
+                    text(app.me!['display_name']),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '@${app.me!['username']}',
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  trailing: IconButton(
+                    tooltip: app.t('Налаштування'),
+                    onPressed: () {
+                      if (drawer) Navigator.pop(context);
+                      go(context, const SettingsPage());
+                    },
+                    icon: const Icon(Icons.settings_outlined, size: 20),
+                  ),
+                  onTap: () {
+                    if (drawer) Navigator.pop(context);
+                    navigate(4);
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     ),
@@ -383,13 +412,31 @@ class _HomeShellState extends StoreState<HomeShell>
       child: Scaffold(
         drawer: wide ? null : Drawer(width: 270, child: sidebar(true)),
         appBar: AppBar(
-          title: Text(
-            wide ? app.t(labels[selected]) : 'LelekaThoughts',
-            style: TextStyle(
-              fontSize: wide ? 23 : 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          bottom: app.palette.id == 'vyshyvanka'
+              ? const PreferredSize(
+                  preferredSize: Size.fromHeight(10),
+                  child: EmbroideryBand(),
+                )
+              : null,
+          title: wide
+              ? Text(app.t(labels[selected]))
+              : const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    StorkMark(size: 26),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'LelekaThoughts',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
           actions: [
             IconButton(
               key: const ValueKey('create'),
