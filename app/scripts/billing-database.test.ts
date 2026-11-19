@@ -59,6 +59,10 @@ test('Postgres: private content, purchases, renewal, cancellation and RLS',async
   check((await run('authenticated',buyer,'select body from public.posts where id=$1',[single.id]))[0]?.body==='PRIVATE_PURCHASE_SECRET','Verified purchase grants original');
   check((await run('authenticated',buyer,'select body from public.posts where id=$1',[continuation.id]))[0]?.body==='PRIVATE_CONTINUATION_SECRET','Purchase includes inherited chain continuations');
   check((await run('authenticated',stranger,'select id from public.posts where id=$1',[single.id])).length===0,'Another buyer cannot borrow entitlement');
+  const buyerBilling=(await run('authenticated',buyer,'select public.my_billing() as value'))[0].value;
+  check(buyerBilling.orders.length===1&&buyerBilling.accounts.length===0,'Billing wrapper returns only own purchase history');
+  check((await run('authenticated',stranger,'select public.my_billing() as value'))[0].value.orders.length===0,'Another user cannot read buyer billing history');
+  check((await db.query("select prosecdef from pg_proc where oid='public.my_billing()'::regprocedure")).rows[0].prosecdef===false,'Public billing history uses invoker privileges');
   check((await server('event',payment)).duplicate===true,'Callback replay is deduplicated');
   await server('event',{...payment,event_key:'verified-fixture-refund',status:'refunded'});
   check((await run('authenticated',buyer,'select id from public.posts where id=$1',[single.id])).length===0,'Refund revokes purchase');

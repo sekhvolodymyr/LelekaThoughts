@@ -243,12 +243,15 @@ create or replace function public.cleanup_claim_v2() returns table(id uuid,path 
 revoke all on function public.cleanup_claim_v2() from public,anon,authenticated;
 grant execute on function public.cleanup_claim_v2() to service_role;
 
-create or replace function public.my_billing() returns jsonb language plpgsql security definer set search_path='' as $$begin
+create or replace function app_private.my_billing() returns jsonb language plpgsql security definer set search_path='' as $$begin
  if not exists(select 1 from public.profiles x join auth.users u on u.id=x.id where x.id=auth.uid() and not x.is_demo and u.email_confirmed_at is not null) then raise exception 'Sign in';end if;
  return jsonb_build_object(
  'orders',(select coalesce(jsonb_agg(x),'[]') from(select o.id,o.creator_id,o.kind,o.post_id,o.amount,o.currency,o.status,o.expires_at,o.auto_renew,o.cancel_requested,o.renewal_state,o.created_at,a.provider from app_private.payment_orders o join app_private.payment_accounts a on a.id=o.account_id where buyer_id=auth.uid() and parent_id is null order by o.created_at desc limit 100)x),
  'accounts',(select coalesce(jsonb_agg(x),'[]') from(select id,provider,state,config-'stripe_account' as config from app_private.payment_accounts where creator_id=auth.uid() and current)x));
 end $$;
+revoke all on function app_private.my_billing() from public,anon;
+grant execute on function app_private.my_billing() to authenticated;
+create or replace function public.my_billing() returns jsonb language sql security invoker set search_path='' as $$select app_private.my_billing()$$;
 revoke all on function public.my_billing() from public,anon;
 grant execute on function public.my_billing() to authenticated;
 
